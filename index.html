@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Zaman Coffee Shop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Poppins:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Zar&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --dark-green: #004d40;
+            --cream: #f7f2e8;
+            --gold: #c6a066;
+            --dark: #1e1e1e;
+            --muted: #a1a1a1;
+        }
+        html, body {
+            background: var(--dark);
+            color: var(--cream);
+            font-family: "Tajawal", system-ui;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+        header {
+            backdrop-filter: blur(6px);
+            background: rgba(30, 30, 30, 0.85);
+        }
+        .btn-primary {
+            background: var(--dark-green);
+            color: var(--cream);
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background: #00332c;
+        }
+        .size-box, .option-box, .extra-box {
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0.2rem;
+            border-radius: 9999px;
+            transition: all 0.2s;
+        }
+        .size-box.selected, .option-box.selected, .extra-box.selected {
+            background: var(--gold);
+            color: var(--dark);
+            border-color: var(--gold);
+        }
+        .price {
+            transition: all 0.3s ease;
+        }
+        .qty {
+            transition: transform 0.2s ease;
+        }
+        .qty-btn {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .qty-btn:hover {
+            background: var(--dark-green);
+        }
+        .toast, .floating-msg {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.8rem 1.2rem;
+            border-radius: 0.6rem;
+            font-weight: bold;
+            z-index: 9999;
+            display: none;
+        }
+        .toast.success {
+            background: #28a745;
+            color: #fff;
+        }
+        .toast.error {
+            background: #dc3545;
+            color: #fff;
+        }
+        .product-modal-backdrop, .table-modal-backdrop, .confirm-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s forwards;
+        }
+        .product-modal, .table-modal, .confirm-modal {
+            background: var(--dark);
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            max-width: 90%;
+            width: 450px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: zoomIn 0.3s forwards;
+            position: relative;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes zoomIn {
+            from { transform: scale(0.8); }
+            to { transform: scale(1); }
+        }
+        .category-item {
+            position: relative;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            transition: color 0.3s;
+        }
+        .category-item::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--gold);
+            transition: all 0.3s;
+            transform: translateX(-50%);
+        }
+        .category-item.active::after {
+            width: 100%;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(6px);
+            border-radius: 1rem;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4);
+        }
+        .slider-dot {
+            transition: all 0.3s;
+        }
+        .slider-dot.active {
+            background: white;
+            transform: scale(1.2);
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iep9x5UaN+gN3G+r+l5b8N4C/O1P+u8u9F1G/I+t3V5V5+z7w8+Q7D5Z5G4G+A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body class="min-h-screen">
+
+<div id="toast" class="toast"></div>
+
+<header class="sticky top-0 z-40 px-4 py-4 flex items-center justify-between shadow-md">
+    <div class="flex items-center gap-3">
+        <i class="fa-solid fa-mug-saucer text-2xl text-gold"></i>
+        <h1 class="text-2xl font-bold" style="font-family:'Zar',sans-serif;">Zaman</h1>
+    </div>
+    <button id="openCartBtn" class="btn-primary px-4 py-2 rounded-full flex items-center gap-2">🛒 السلة <span id="cartCount">0</span></button>
+</header>
+
+<section id="categories" class="sticky top-[72px] z-30 bg-[rgba(30,30,30,0.85)] px-4 py-2 shadow-sm flex overflow-x-auto gap-4 scrollbar-hide">
+    <div class="category-item active" data-category="all">جميع الأصناف</div>
+    <div class="category-item" data-category="hot-drinks">مشروبات ساخنة</div>
+    <div class="category-item" data-category="cold-drinks">مشروبات باردة</div>
+    <div class="category-item" data-category="desserts">حلويات</div>
+    <div class="category-item" data-category="food">طعام</div>
+    <div class="category-item" data-category="hookahs">أراجيل</div>
+</section>
+
+<section id="hero" class="relative w-full h-[400px] sm:h-[500px] overflow-hidden">
+    <div class="slider flex transition-transform duration-700" style="width:300%">
+        <div class="w-full flex-shrink-0 relative">
+            <img src="https://images.unsplash.com/photo-1579894875704-c3614df8b51d?q=80&w=2940&auto=format&fit=crop" class="w-full h-full object-cover"/>
+            <div class="absolute inset-0 bg-black/40"></div>
+            <div class="absolute bottom-6 right-4 text-2xl font-bold text-white">قهوة الصباح</div>
+        </div>
+        <div class="w-full flex-shrink-0 relative">
+            <img src="https://images.unsplash.com/photo-1541349141029-7c858b9f056d?q=80&w=2940&auto=format&fit=crop" class="w-full h-full object-cover"/>
+            <div class="absolute inset-0 bg-black/40"></div>
+            <div class="absolute bottom-6 right-4 text-2xl font-bold text-white">حلويات شهية</div>
+        </div>
+        <div class="w-full flex-shrink-0 relative">
+            <img src="https://images.unsplash.com/photo-1506815457410-ecb0a21a5a8e?q=80&w=2940&auto=format&fit=crop" class="w-full h-full object-cover"/>
+            <div class="absolute inset-0 bg-black/40"></div>
+            <div class="absolute bottom-6 right-4 text-2xl font-bold text-white">وجبات خفيفة</div>
+        </div>
+    </div>
+    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2" id="slider-dots">
+        <span class="w-3 h-3 rounded-full bg-white/50 slider-dot active"></span>
+        <span class="w-3 h-3 rounded-full bg-white/50 slider-dot"></span>
+        <span class="w-3 h-3 rounded-full bg-white/50 slider-dot"></span>
+    </div>
+</section>
+
+<section id="menu" class="max-w-6xl mx-auto px-4 py-8">
+    <h2 class="text-3xl font-bold mb-6 text-center" id="menuTitle">قائمة الأصناف</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" id="productGrid"></div>
+</section>
+
+<div id="productModal" class="product-modal-backdrop">
+    <div class="product-modal">
+        <img id="modalProductImg" src="" class="w-full h-64 object-cover rounded-xl mb-4"/>
+        <h3 id="modalProductName" class="font-bold text-2xl mb-1"></h3>
+        <p id="modalProductDesc" class="text-sm text-[var(--muted)] mb-4"></p>
+        
+        <div id="modalOptionsContainer">
+            </div>
+
+        <div class="flex items-center justify-between mb-4 mt-6">
+            <div class="flex gap-2 items-center">
+                <button id="modalMinusBtn" class="qty-btn minus w-8 h-8 rounded-full bg-white/10">-</button>
+                <span id="modalQty" class="qty text-lg w-6 text-center">1</span>
+                <button id="modalPlusBtn" class="qty-btn plus w-8 h-8 rounded-full bg-white/10">+</button>
+            </div>
+            <div class="text-2xl font-bold" id="modalPrice"></div>
+        </div>
+        <button id="modalAddToCartBtn" class="btn-primary w-full py-3 rounded-xl font-bold">أضف للسلة</button>
+        <button id="modalCloseBtn" class="absolute top-4 left-4 text-white text-xl">✕</button>
+    </div>
+</div>
+
+<div id="tableModal" class="table-modal-backdrop">
+    <div class="table-modal">
+        <h4 class="text-xl font-bold mb-4 text-center">اختر رقم طاولتك ☕</h4>
+        <div id="tableSelectModal" class="flex flex-wrap justify-center gap-4 mb-4"></div>
+    </div>
+</div>
+
+<div id="confirmModal" class="confirm-modal-backdrop">
+    <div class="confirm-modal text-center">
+        <h4 class="text-xl font-bold mb-2">تأكيد الطلب</h4>
+        <p class="text-sm text-[var(--muted)] mb-4">هل أنت متأكد من إرسال الطلب للطاولة رقم <span id="confirmTableNum" class="font-bold text-lg text-gold"></span>؟</p>
+        <div class="flex gap-4 justify-center">
+            <button id="confirmSendBtn" class="btn-primary px-6 py-2 rounded-xl">نعم، إرسال</button>
+            <button id="cancelSendBtn" class="px-6 py-2 rounded-xl text-white bg-red-600">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<div id="cartDrawer" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/60" data-close></div>
+    <div class="absolute right-0 top-0 h-full w-full sm:w-[420px] bg-[var(--dark)] border-l border-white/10 p-5 overflow-y-auto">
+        <div class="flex items-center justify-between mb-3">
+            <h4 class="text-xl font-bold">🛒 سلة الطلب</h4>
+            <button class="btn-primary px-3 py-1 rounded-lg" data-close>✕</button>
+        </div>
+        <div id="cartDetails" class="mb-4 text-center">
+            <p class="text-sm text-gold">رقم الطاولة: <span id="cartTableNum" class="font-bold"></span></p>
+        </div>
+        <div id="cartItems" class="space-y-3"></div>
+        <div class="divider my-4 h-[1px] bg-white/10"></div>
+        <div class="flex justify-between items-center text-xl font-bold mb-4">
+            <span>المجموع:</span>
+            <span id="cartTotal">0₪</span>
+        </div>
+        <button id="sendWhatsApp" class="btn-primary w-full py-3 rounded-xl font-bold">إرسال الطلب عبر واتساب</button>
+    </div>
+</div>
+
+<footer class="bg-[var(--dark)] py-6 mt-12 border-t border-white/10">
+    <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-6">
+        <div class="flex gap-4">
+            <a href="#" class="text-white text-2xl"><i class="fab fa-instagram"></i></a>
+            <a href="#" class="text-white text-2xl"><i class="fab fa-facebook"></i></a>
+            <a href="#" class="text-white text-2xl"><i class="fab fa-whatsapp"></i></a>
+        </div>
+        <div class="text-center sm:text-right">
+            <p>&copy; 2024 Zaman Coffee Shop. جميع الحقوق محفوظة.</p>
+        </div>
+    </div>
+</footer>
+
+<script>
+    // Slider
+    let slideIndex = 0;
+    const slides = document.querySelector('.slider');
+    const dots = document.querySelectorAll('.slider-dot');
+    const totalSlides = dots.length;
+
+    function updateSlider() {
+        slides.style.transform = `translateX(-${slideIndex * 100}%)`;
+        dots.forEach((dot, index) => {
+            dot.classList.remove('active');
+            if (index === slideIndex) {
+                dot.classList.add('active');
+            }
+        });
+    }
+
+    setInterval(() => {
+        slideIndex = (slideIndex + 1) % totalSlides;
+        updateSlider();
+    }, 4000);
+
+    // Products Data
+    const products = [{
+        id: 'p1',
+        name: 'كابتشينو',
+        desc: 'مزيج من الإسبريسو والحليب المبخر',
+        img: 'https://images.unsplash.com/photo-1579894875704-c3614df8b51d?q=80&w=2940&auto=format&fit=crop',
+        type: 'drink',
+        prices: { S: 12, M: 14, L: 16 },
+        category: 'hot-drinks'
+    }, {
+        id: 'p2',
+        name: 'لاتيه مثلج',
+        desc: 'قهوة باردة منعشة',
+        img: 'https://images.unsplash.com/photo-1541349141029-7c858b9f056d?q=80&w=2940&auto=format&fit=crop',
+        type: 'drink',
+        prices: { S: 13, M: 15, L: 17 },
+        category: 'cold-drinks'
+    }, {
+        id: 'p3',
+        name: 'تشيز كيك',
+        desc: 'حلوى لذيذة وكريمية',
+        img: 'https://images.unsplash.com/photo-1582294157922-38d5c3f8e6c4?q=80&w=2940&auto=format&fit=crop',
+        type: 'dessert',
+        flavors: ['فراولة', 'شوكولاتة', 'توت أزرق'],
+        price: 16,
+        category: 'desserts'
+    }, {
+        id: 'p4',
+        name: 'سلطة خضراء',
+        desc: 'سلطة منعشة مع خضار طازج',
+        img: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=2940&auto=format&fit=crop',
+        type: 'food',
+        extras: [{ name: 'صوص الرانش', price: 2 }, { name: 'صوص السيزار', price: 2 }, { name: 'قطع دجاج', price: 5 }],
+        price: 12,
+        category: 'food'
+    }, {
+        id: 'p5',
+        name: 'ساندويش دجاج',
+        desc: 'دجاج مشوي مع صوص خاص',
+        img: 'https://images.unsplash.com/photo-1628178652427-d0d62b662e78?q=80&w=2940&auto=format&fit=crop',
+        type: 'food',
+        extras: [{ name: 'جبنة موزاريلا', price: 3 }, { name: 'خس وطماطم', price: 0 }, { name: 'بطاطا مقلية', price: 5 }],
+        price: 15,
+        category: 'food'
+    }, {
+        id: 'p6',
+        name: 'أرجيلة تفاحتين',
+        desc: 'نكهة التفاحتين الكلاسيكية',
+        img: 'https://images.unsplash.com/photo-1620353457811-097561877983?q=80&w=2940&auto=format&fit=crop',
+        type: 'hookah',
+        price: 25,
+        category: 'hookahs',
+    }, {
+        id: 'p7',
+        name: 'أرجيلة ليمون ونعناع',
+        desc: 'مزيج منعش من الليمون والنعناع',
+        img: 'https://images.unsplash.com/photo-1620353457811-097561877983?q=80&w=2940&auto=format&fit=crop',
+        type: 'hookah',
+        price: 27,
+        category: 'hookahs',
+    }, {
+        id: 'p8',
+        name: 'أرجيلة عنب وتوت',
+        desc: 'مزيج لذيذ من العنب والتوت',
+        img: 'https://images.unsplash.com/photo-1620353457811-097561877983?q=80&w=2940&auto=format&fit=crop',
+        type: 'hookah',
+        price: 28,
+        category: 'hookahs',
+    }];
+
+    const productGrid = document.getElementById('productGrid');
+    const categoriesBar = document.getElementById('categories');
+    const menuTitle = document.getElementById('menuTitle');
+    const categoryNames = {
+        'all': 'جميع الأصناف',
+        'hot-drinks': 'مشروبات ساخنة',
+        'cold-drinks': 'مشروبات باردة',
+        'desserts': 'حلويات',
+        'food': 'طعام',
+        'hookahs': 'أراجيل'
+    };
+    
+    const productModal = document.getElementById('productModal');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const tableModal = document.getElementById('tableModal');
+    const sendWhatsAppBtn = document.getElementById('sendWhatsApp');
+    const confirmModal = document.getElementById('confirmModal');
+    const confirmTableNum = document.getElementById('confirmTableNum');
+    const confirmSendBtn = document.getElementById('confirmSendBtn');
+    const cancelSendBtn = document.getElementById('cancelSendBtn');
+    const cartDrawer = document.getElementById('cartDrawer');
+
+    let currentProduct = null;
+    let modalQty = 1;
+    let selectedTable = null;
+    let selectedOption = null;
+
+    // Filter products based on category
+    function filterProducts(category) {
+        productGrid.innerHTML = '';
+        const filteredProducts = category === 'all' ? products : products.filter(p => p.category === category);
+        
+        menuTitle.textContent = categoryNames[category];
+
+        filteredProducts.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <img src="${p.img}" class="w-full h-40 object-cover"/>
+                <div class="p-4 flex flex-col gap-2">
+                    <h3 class="font-bold text-lg">${p.name}</h3>
+                    <p class="text-sm text-[var(--muted)]">${p.desc}</p>
+                    <span class="font-bold text-lg text-gold mt-2">₪${p.type === 'drink' ? Object.values(p.prices)[0] : p.price}</span>
+                </div>
+            `;
+            card.addEventListener('click', () => showProductModal(p));
+            productGrid.appendChild(card);
+        });
+    }
+
+    // Handle category clicks
+    categoriesBar.querySelectorAll('.category-item').forEach(item => {
+        item.addEventListener('click', () => {
+            categoriesBar.querySelectorAll('.category-item').forEach(c => c.classList.remove('active'));
+            item.classList.add('active');
+            filterProducts(item.dataset.category);
+        });
+    });
+
+    // Initial load
+    window.addEventListener('load', () => {
+        showTableModal();
+    });
+
+    // Show Table Modal and disable page
+    function showTableModal() {
+        tableModal.style.display = 'flex';
+        document.body.style.pointerEvents = 'none';
+        tableModal.style.pointerEvents = 'auto';
+        renderTableOptions();
+    }
+
+    // Hide Table Modal and enable page
+    function hideTableModal() {
+        tableModal.style.display = 'none';
+        document.body.style.pointerEvents = 'auto';
+    }
+
+    // Show Product Modal
+    function showProductModal(product) {
+        currentProduct = product;
+        modalQty = 1;
+        selectedOption = null;
+        
+        document.getElementById('modalProductImg').src = product.img;
+        document.getElementById('modalProductName').textContent = product.name;
+        document.getElementById('modalProductDesc').textContent = product.desc;
+        
+        const optionsContainer = document.getElementById('modalOptionsContainer');
+        optionsContainer.innerHTML = '';
+
+        if (product.type === 'drink') {
+            optionsContainer.innerHTML = `
+                <h5 class="text-sm text-[var(--muted)] mb-2">اختر الحجم:</h5>
+                <div id="modalProductSizes" class="flex flex-wrap gap-2"></div>
+            `;
+            const sizesContainer = optionsContainer.querySelector('#modalProductSizes');
+            const sizes = Object.keys(product.prices);
+            selectedOption = { type: 'size', value: sizes[0], price: product.prices[sizes[0]] };
+            sizes.forEach(size => {
+                const sizeBox = document.createElement('div');
+                sizeBox.className = `size-box ${size === selectedOption.value ? 'selected' : ''}`;
+                sizeBox.textContent = size;
+                sizeBox.dataset.size = size;
+                sizeBox.addEventListener('click', () => {
+                    sizesContainer.querySelectorAll('.size-box').forEach(s => s.classList.remove('selected'));
+                    sizeBox.classList.add('selected');
+                    selectedOption = { type: 'size', value: size, price: product.prices[size] };
+                    updateModalPrice();
+                });
+                sizesContainer.appendChild(sizeBox);
+            });
+        } else if (product.type === 'dessert') {
+            optionsContainer.innerHTML = `
+                <h5 class="text-sm text-[var(--muted)] mb-2">اختر النكهة:</h5>
+                <div id="modalProductFlavors" class="flex flex-wrap gap-2"></div>
+            `;
+            const flavorsContainer = optionsContainer.querySelector('#modalProductFlavors');
+            const flavors = product.flavors;
+            selectedOption = { type: 'flavor', value: flavors[0], price: product.price };
+            flavors.forEach(flavor => {
+                const flavorBox = document.createElement('div');
+                flavorBox.className = `option-box ${flavor === selectedOption.value ? 'selected' : ''}`;
+                flavorBox.textContent = flavor;
+                flavorBox.dataset.flavor = flavor;
+                flavorBox.addEventListener('click', () => {
+                    flavorsContainer.querySelectorAll('.option-box').forEach(s => s.classList.remove('selected'));
+                    flavorBox.classList.add('selected');
+                    selectedOption = { type: 'flavor', value: flavor, price: product.price };
+                    updateModalPrice();
+                });
+                flavorsContainer.appendChild(flavorBox);
+            });
+        } else if (product.type === 'food') {
+            optionsContainer.innerHTML = `
+                <h5 class="text-sm text-[var(--muted)] mb-2">إضافات:</h5>
+                <div id="modalProductExtras" class="flex flex-wrap gap-2"></div>
+            `;
+            const extrasContainer = optionsContainer.querySelector('#modalProductExtras');
+            const extras = product.extras;
+            selectedOption = { type: 'extras', values: [] };
+            extras.forEach(extra => {
+                const extraBox = document.createElement('div');
+                extraBox.className = `extra-box`;
+                extraBox.textContent = extra.name;
+                extraBox.dataset.extra = extra.name;
+                if (extra.price > 0) {
+                     extraBox.textContent += ` (+${extra.price}₪)`;
+                }
+                extraBox.addEventListener('click', () => {
+                    const isSelected = extraBox.classList.toggle('selected');
+                    if (isSelected) {
+                        selectedOption.values.push(extra);
+                    } else {
+                        selectedOption.values = selectedOption.values.filter(item => item.name !== extra.name);
+                    }
+                    updateModalPrice();
+                });
+                extrasContainer.appendChild(extraBox);
+            });
+        }
+        
+        document.getElementById('modalQty').textContent = modalQty;
+        updateModalPrice();
+        productModal.style.display = 'flex';
+    }
+
+    function updateModalPrice() {
+        let basePrice = 0;
+        let extrasPrice = 0;
+        
+        if (currentProduct.type === 'drink') {
+            basePrice = selectedOption.price;
+        } else if (currentProduct.type === 'dessert' || currentProduct.type === 'hookah') {
+            basePrice = currentProduct.price;
+        } else if (currentProduct.type === 'food') {
+            basePrice = currentProduct.price;
+            extrasPrice = selectedOption.values.reduce((total, extra) => total + extra.price, 0);
+        }
+
+        const totalPrice = (basePrice + extrasPrice) * modalQty;
+        document.getElementById('modalPrice').textContent = `₪${totalPrice}`;
+    }
+
+    // Close Modal
+    modalCloseBtn.addEventListener('click', () => productModal.style.display = 'none');
+    
+    // Close modal when clicking outside
+    productModal.addEventListener('click', (e) => {
+        if (e.target.id === 'productModal') {
+            productModal.style.display = 'none';
+        }
+    });
+
+    // Quantity controls in modal
+    document.getElementById('modalPlusBtn').addEventListener('click', () => {
+        modalQty++;
+        document.getElementById('modalQty').textContent = modalQty;
+        updateModalPrice();
+    });
+    document.getElementById('modalMinusBtn').addEventListener('click', () => {
+        if (modalQty > 1) {
+            modalQty--;
+            document.getElementById('modalQty').textContent = modalQty;
+            updateModalPrice();
+        }
+    });
+
+    // Add to cart from modal
+    document.getElementById('modalAddToCartBtn').addEventListener('click', () => {
+        if (!selectedTable) {
+            showToast('الرجاء اختيار رقم الطاولة أولاً', 'error');
+            return;
+        }
+
+        let itemDetails = { product: currentProduct, qty: modalQty };
+
+        if (currentProduct.type === 'drink') {
+            itemDetails.size = selectedOption.value;
+            itemDetails.pricePerUnit = selectedOption.price;
+        } else if (currentProduct.type === 'dessert') {
+            itemDetails.flavor = selectedOption.value;
+            itemDetails.pricePerUnit = selectedOption.price;
+        } else if (currentProduct.type === 'food') {
+            itemDetails.extras = selectedOption.values;
+            itemDetails.pricePerUnit = currentProduct.price + selectedOption.values.reduce((total, extra) => total + extra.price, 0);
+        } else if (currentProduct.type === 'hookah') {
+            itemDetails.pricePerUnit = currentProduct.price;
+        }
+
+        cart.push(itemDetails);
+        updateCart();
+        productModal.style.display = 'none';
+        showToast('تم إضافة المنتج للسلة', 'success');
+    });
+
+    // Toast
+    function showToast(msg, type) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = `toast ${type}`;
+        toast.style.display = 'block';
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 2500);
+    }
+
+    // Cart
+    let cart = [];
+
+    const openCartBtn = document.getElementById('openCartBtn');
+    const cartItems = document.getElementById('cartItems');
+    const cartCountEl = document.getElementById('cartCount');
+    const cartTableNumEl = document.getElementById('cartTableNum');
+    const cartTotalEl = document.getElementById('cartTotal');
+
+    openCartBtn.addEventListener('click', () => cartDrawer.classList.remove('hidden'));
+    cartDrawer.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => cartDrawer.classList.add('hidden')));
+
+    // Close cart drawer when clicking outside
+    cartDrawer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('bg-black/60')) {
+            cartDrawer.classList.add('hidden');
+        }
+    });
+
+    function updateCart() {
+        cartItems.innerHTML = '';
+        let totalQty = 0;
+        let totalPrice = 0;
+        cart.forEach((item, i) => {
+            let itemText = item.product.name;
+            let itemPrice = item.pricePerUnit;
+
+            if (item.product.type === 'drink') {
+                itemText += ` - ${item.size}`;
+            } else if (item.product.type === 'dessert') {
+                itemText += ` - ${item.flavor}`;
+            } else if (item.product.type === 'food') {
+                itemText += item.extras.length > 0 ? ` (إضافات: ${item.extras.map(e => e.name).join(', ')})` : '';
+            }
+
+            const itemTotalPrice = itemPrice * item.qty;
+            totalPrice += itemTotalPrice;
+
+            const div = document.createElement('div');
+            div.className = 'flex justify-between items-center bg-white/5 p-2 rounded';
+            div.innerHTML = `
+                <div>${itemText} x ${item.qty}</div>
+                <div class="flex items-center gap-2">
+                    ${itemTotalPrice}₪ 
+                    <button class="text-red-500 font-bold" data-del="${i}">✕</button>
+                </div>
+            `;
+            cartItems.appendChild(div);
+            totalQty += item.qty;
+        });
+
+        cartCountEl.textContent = totalQty;
+        cartTotalEl.textContent = `${totalPrice}₪`;
+        cartTableNumEl.textContent = selectedTable || 'غير محدد';
+    }
+
+    // Handle delete from cart
+    cartItems.addEventListener('click', (e) => {
+        if (e.target.dataset.del) {
+            const index = parseInt(e.target.dataset.del);
+            cart.splice(index, 1);
+            updateCart();
+        }
+    });
+
+    // Render table options for modal
+    function renderTableOptions() {
+        const tableSelectModal = document.getElementById('tableSelectModal');
+        tableSelectModal.innerHTML = '';
+        for (let i = 1; i <= 9; i++) {
+            const btn = document.createElement('button');
+            btn.textContent = i;
+            btn.className = `w-12 h-12 flex items-center justify-center border rounded-full bg-white/10 transition-colors hover:bg-white/20`;
+            btn.addEventListener('click', () => {
+                selectedTable = i;
+                hideTableModal();
+                showToast(`تم اختيار الطاولة رقم ${i}`, 'success');
+                filterProducts('all'); // Show products after table selection
+            });
+            tableSelectModal.appendChild(btn);
+        }
+    }
+
+    // Show Confirmation Modal
+    sendWhatsAppBtn.addEventListener('click', () => {
+        if (!selectedTable) {
+            showToast('الرجاء اختيار رقم الطاولة أولاً', 'error');
+            return;
+        }
+        if (cart.length === 0) {
+            showToast('السلة فارغة', 'error');
+            return;
+        }
+        confirmTableNum.textContent = selectedTable;
+        confirmModal.style.display = 'flex';
+    });
+
+    // Confirm and Send WhatsApp
+    confirmSendBtn.addEventListener('click', () => {
+        confirmModal.style.display = 'none';
+        let msg = `🧾 فاتورة طلب من مطعم زمان\nرقم الطاولة: ${selectedTable}\n\n`;
+        let totalPrice = 0;
+        cart.forEach(item => {
+            let itemText = item.product.name;
+            let itemPrice = item.pricePerUnit;
+
+            if (item.product.type === 'drink') {
+                itemText += ` - ${item.size}`;
+            } else if (item.product.type === 'dessert') {
+                itemText += ` - ${item.flavor}`;
+            } else if (item.product.type === 'food') {
+                itemText += item.extras.length > 0 ? ` (إضافات: ${item.extras.map(e => e.name).join(', ')})` : '';
+            }
+
+            msg += `${itemText} x ${item.qty} = ${itemPrice * item.qty}₪\n`;
+            totalPrice += itemPrice * item.qty;
+        });
+        msg += `\nإجمالي الفاتورة: ${totalPrice}₪`;
+        const url = `https://wa.me/97259888358?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+        
+        // Clear cart after sending and reset to table selection
+        cart = [];
+        updateCart();
+        selectedTable = null;
+        showToast('تم إرسال الطلب بنجاح', 'success');
+        cartDrawer.classList.add('hidden');
+        setTimeout(() => {
+            showTableModal();
+        }, 1500);
+    });
+
+    // Cancel sending
+    cancelSendBtn.addEventListener('click', () => {
+        confirmModal.style.display = 'none';
+    });
+</script>
+</body>
+</html>
+```
